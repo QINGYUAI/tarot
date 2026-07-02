@@ -1,0 +1,90 @@
+[
+  {
+    "id": "single",
+    "name": {
+      "en": "Single Card",
+      "zh": "单张牌阵"
+    },
+    "description": "适合今日运势、快速解答和简单问题，一张牌揭示整体能量与当下状态。",
+    "cardCount": 1,
+    "positions": [
+      {
+        "index": 1,
+        "name": "整体状态",
+        "description": "反映当下情况与核心能量指示"
+      }
+    ]
+  },
+  {
+    "id": "three",
+    "name": {
+      "en": "Three Cards",
+      "zh": "三张牌阵"
+    },
+    "description": "适合过去/现在/未来分析，或 A/B/C 选项对比，从时间线或对比角度解读。",
+    "cardCount": 3,
+    "positions": [
+      {
+        "index": 1,
+        "name": "位置一",
+        "description": "过去 / 选项 A / 起始因素"
+      },
+      {
+        "index": 2,
+        "name": "位置二",
+        "description": "现在 / 选项 B / 当前状态"
+      },
+      {
+        "index": 3,
+        "name": "位置三",
+        "description": "未来 / 选项 C / 可能走向"
+      }
+    ]
+  },
+  {
+    "id": "celtic_cross",
+    "name": {
+      "en": "Celtic Cross",
+      "zh": "凯尔特十字"
+    },
+    "description": "适合深度分析、重要决策和复杂问题，从多维度全面解读（MVP 版 7 张核心位置）。",
+    "cardCount": 7,
+    "positions": [
+      {
+        "index": 1,
+        "name": "核心牌",
+        "description": "问题的核心与现状"
+      },
+      {
+        "index": 4,
+        "name": "过去牌",
+        "description": "最近的过去"
+      },
+      {
+        "index": 5,
+        "name": "未来牌",
+        "description": "最近的未来"
+      },
+      {
+        "index": 6,
+        "name": "上面牌",
+        "description": "理想与目标"
+      },
+      {
+        "index": 7,
+        "name": "自己牌",
+        "description": "问事者的心态与态度"
+      },
+      {
+        "index": 8,
+        "name": "环境牌",
+        "description": "周遭环境与他人影响"
+      },
+      {
+        "index": 10,
+        "name": "结果牌",
+        "description": "最终结局与最终结果"
+      }
+    ]
+  }
+]

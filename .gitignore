@@ -1,0 +1,16 @@
+# 依赖
+node_modules/
+tarot/
+dist/
+
+# 环境变量（含 API Key）
+.env
+.env.local
+
+# 编辑器
+.vscode/
+*.log
+
+# 系统文件
+.DS_Store
+Thumbs.db
