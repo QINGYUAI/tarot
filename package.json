@@ -8,6 +8,7 @@
     "dev:client": "vite",
     "dev:server": "tsx watch server/index.ts",
     "build": "vue-tsc -b && vite build",
+    "start:server": "tsx server/index.ts",
     "preview": "vite preview",
     "download:cards": "node scripts/download-card-images.mjs"
   },

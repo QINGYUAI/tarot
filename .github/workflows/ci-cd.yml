@@ -1,0 +1,58 @@
+# CI/CD：PR 构建校验，main 分支 push 后 SSH 自动部署到自有服务器
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-cd-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: 构建校验
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 配置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 构建前端
+        run: npm run build
+        env:
+          VITE_BASE_PATH: ./
+          VITE_OUT_DIR: tarot
+          VITE_APP_TITLE: 塔罗占卜
+          VITE_AI_MODELS: '[{"id":"deepseek","name":"DeepSeek","enabled":true},{"id":"zhipu","name":"智谱清言","enabled":true},{"id":"qwen","name":"通义千问","enabled":true},{"id":"xiaomi","name":"小米 MiMo","enabled":true}]'
+          VITE_DEFAULT_MODEL: deepseek
+
+  deploy:
+    name: 部署到服务器
+    needs: ci
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH 部署
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          command_timeout: 15m
+          script_stop: true
+          script: |
+            cd ${{ secrets.DEPLOY_PATH || '/var/www/tarot' }}
+            bash scripts/deploy.sh
