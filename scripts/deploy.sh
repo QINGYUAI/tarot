@@ -36,7 +36,13 @@ npm run build
 if [[ -n "${DEPLOY_PATH:-}" && "$DEPLOY_PATH" != "$BUILD_DIR" ]]; then
   echo ">>> [4/5] 同步静态文件到 $DEPLOY_PATH ..."
   mkdir -p "$DEPLOY_PATH"
-  rsync -a --delete "$BUILD_DIR/" "$DEPLOY_PATH/"
+  if command -v rsync &>/dev/null; then
+    rsync -a --delete "$BUILD_DIR/" "$DEPLOY_PATH/"
+  else
+    # 无 rsync 时用 cp 替代（兼容最小化 Linux 环境）
+    find "$DEPLOY_PATH" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+    cp -a "$BUILD_DIR/." "$DEPLOY_PATH/"
+  fi
 else
   echo ">>> [4/5] 静态文件保留在 $BUILD_DIR"
 fi
