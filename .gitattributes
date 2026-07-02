@@ -1,0 +1,2 @@
+# Shell 脚本强制 LF，避免 Windows 提交后在 Linux 服务器无法执行
+*.sh text eol=lf

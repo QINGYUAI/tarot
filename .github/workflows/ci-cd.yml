@@ -54,5 +54,20 @@ jobs:
           command_timeout: 15m
           script_stop: true
           script: |
-            cd ${{ secrets.DEPLOY_PATH || '/var/www/tarot' }}
+            DEPLOY_PATH="${{ secrets.DEPLOY_PATH || '/var/www/tarot' }}"
+
+            # 首次部署：目录不存在或无 git 仓库时克隆
+            if [ ! -d "$DEPLOY_PATH/.git" ]; then
+              echo ">>> 首次部署，克隆仓库到 $DEPLOY_PATH ..."
+              mkdir -p "$DEPLOY_PATH"
+              git clone https://github.com/QINGYUAI/tarot.git "$DEPLOY_PATH"
+            fi
+
+            cd "$DEPLOY_PATH"
+
+            # 先同步最新代码，确保 deploy.sh 等文件存在
+            echo ">>> 同步最新代码..."
+            git fetch origin main
+            git reset --hard origin/main
+
             bash scripts/deploy.sh
