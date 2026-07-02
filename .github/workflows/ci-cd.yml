@@ -55,17 +55,18 @@ jobs:
           script_stop: true
           script: |
             DEPLOY_PATH="${{ secrets.DEPLOY_PATH || '/var/www/tarot' }}"
+            REPO_URL="https://github.com/QINGYUAI/tarot.git"
 
-            # 首次部署：目录不存在或无 git 仓库时克隆
-            if [ ! -d "$DEPLOY_PATH/.git" ]; then
-              echo ">>> 首次部署，克隆仓库到 $DEPLOY_PATH ..."
-              mkdir -p "$DEPLOY_PATH"
-              git clone https://github.com/QINGYUAI/tarot.git "$DEPLOY_PATH"
-            fi
-
+            mkdir -p "$DEPLOY_PATH"
             cd "$DEPLOY_PATH"
 
-            # 先同步最新代码，确保 deploy.sh 等文件存在
+            # 目录已存在但非 git 仓库时：初始化而非 clone（避免目录非空报错）
+            if [ ! -d .git ]; then
+              echo ">>> 初始化 git 仓库..."
+              git init
+              git remote add origin "$REPO_URL" 2>/dev/null || git remote set-url origin "$REPO_URL"
+            fi
+
             echo ">>> 同步最新代码..."
             git fetch origin main
             git reset --hard origin/main
