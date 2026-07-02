@@ -2,13 +2,17 @@
 # 服务器端部署脚本：由 GitHub Actions SSH 触发，也可在服务器上手动执行
 set -euo pipefail
 
-# 项目根目录（脚本位于 scripts/ 下）
-PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+# PROJECT_PATH：Git 源码目录（默认脚本所在项目的根目录）
+# DEPLOY_PATH：前端静态文件部署目录（Nginx root，可与源码目录不同）
+PROJECT_DIR="${PROJECT_PATH:-$(cd "$(dirname "$0")/.." && pwd)}"
+BUILD_DIR="$PROJECT_DIR/tarot"
 cd "$PROJECT_DIR"
 
 echo "=========================================="
 echo "  Tarot 部署开始: $(date '+%Y-%m-%d %H:%M:%S')"
-echo "  目录: $PROJECT_DIR"
+echo "  源码目录: $PROJECT_DIR"
+echo "  构建输出: $BUILD_DIR"
+echo "  部署目录: ${DEPLOY_PATH:-（同构建输出）}"
 echo "=========================================="
 
 # 检查 .env 是否存在（首次部署需手动创建）
@@ -18,17 +22,26 @@ if [[ ! -f .env ]]; then
   exit 1
 fi
 
-echo ">>> [1/4] 拉取最新代码..."
+echo ">>> [1/5] 拉取最新代码..."
 git fetch origin main
 git reset --hard origin/main
 
-echo ">>> [2/4] 安装依赖..."
+echo ">>> [2/5] 安装依赖..."
 npm ci
 
-echo ">>> [3/4] 构建前端（读取 .env 中的 VITE_* 变量）..."
+echo ">>> [3/5] 构建前端（读取 .env 中的 VITE_* 变量）..."
 npm run build
 
-echo ">>> [4/4] 重启后端 API..."
+# 若配置了 DEPLOY_PATH 且与构建目录不同，则同步静态文件
+if [[ -n "${DEPLOY_PATH:-}" && "$DEPLOY_PATH" != "$BUILD_DIR" ]]; then
+  echo ">>> [4/5] 同步静态文件到 $DEPLOY_PATH ..."
+  mkdir -p "$DEPLOY_PATH"
+  rsync -a --delete "$BUILD_DIR/" "$DEPLOY_PATH/"
+else
+  echo ">>> [4/5] 静态文件保留在 $BUILD_DIR"
+fi
+
+echo ">>> [5/5] 重启后端 API..."
 if pm2 describe tarot-api > /dev/null 2>&1; then
   pm2 reload ecosystem.config.cjs --update-env
 else

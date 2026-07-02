@@ -6,8 +6,8 @@ server {
     listen 80;
     server_name tarot.yourdomain.com;  # 改为你的域名
 
-    # 前端静态文件（npm run build 产物目录）
-    root /var/www/tarot/tarot;
+    # 前端静态文件（DEPLOY_PATH，与 Git 源码目录 /var/www/tarot 可不同）
+    root /var/www/html/tarot;
     index index.html;
 
     # API 反向代理到 Express 后端

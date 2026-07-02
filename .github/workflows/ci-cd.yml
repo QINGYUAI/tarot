@@ -54,11 +54,14 @@ jobs:
           command_timeout: 15m
           script_stop: true
           script: |
-            DEPLOY_PATH="${{ secrets.DEPLOY_PATH || '/var/www/tarot' }}"
+            # PROJECT_PATH：Git 源码目录；DEPLOY_PATH：前端静态文件部署目录（Nginx root）
+            PROJECT_PATH="${{ secrets.PROJECT_PATH || '/var/www/tarot' }}"
+            export DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"
+            export PROJECT_PATH
             REPO_URL="https://github.com/QINGYUAI/tarot.git"
 
-            mkdir -p "$DEPLOY_PATH"
-            cd "$DEPLOY_PATH"
+            mkdir -p "$PROJECT_PATH"
+            cd "$PROJECT_PATH"
 
             # 目录已存在但非 git 仓库时：初始化而非 clone（避免目录非空报错）
             if [ ! -d .git ]; then
