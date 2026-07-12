@@ -6,6 +6,7 @@ import type { Request } from 'express'
 import { interpretTarot, streamInterpretTarot, type InterpretRequestBody } from './ai.js'
 import { getConfiguredProviders, PROVIDERS } from './providers.js'
 import { extractInterpretMeta, logger } from './logger.js'
+import { mountLogsViewer, isLogsViewerPath } from './logs-viewer.js'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -28,8 +29,9 @@ app.use((req, res, next) => {
   const requestId = randomUUID()
 
   res.on('finish', () => {
-    // 健康检查访问频繁，仅记录异常
+    // 健康检查与日志页访问不记录，避免刷屏
     if (req.path === '/api/health' && res.statusCode < 400) return
+    if (isLogsViewerPath(req.path) && res.statusCode < 400) return
 
     logger.info('http', `${req.method} ${req.path}`, {
       requestId,
@@ -142,6 +144,9 @@ app.post('/api/tarot/interpret/stream', async (req, res) => {
     res.end()
   }
 })
+
+// 独立日志查看页（无前端入口，仅地址栏访问）
+mountLogsViewer(app)
 
 app.listen(PORT, () => {
   const logDir = logger.getLogDir()
