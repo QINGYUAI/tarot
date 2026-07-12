@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto'
 import type { Request } from 'express'
 import { interpretTarot, streamInterpretTarot, type InterpretRequestBody } from './ai.js'
 import { getConfiguredProviders, PROVIDERS } from './providers.js'
-import { extractInterpretMeta, logger } from './logger.js'
+import { extractInterpretMeta, extractAiResultLog, logger } from './logger.js'
 import { mountLogsViewer, isLogsViewerPath } from './logs-viewer.js'
 
 const app = express()
@@ -88,6 +88,7 @@ app.post('/api/tarot/interpret', async (req, res) => {
       tokens: result.tokens,
       durationMs: Date.now() - start,
       mock: result.mock,
+      aiResult: extractAiResultLog(result.interpretation),
     })
     res.json({ success: true, ...result })
   } catch (err) {
@@ -130,6 +131,7 @@ app.post('/api/tarot/interpret/stream', async (req, res) => {
       tokens: result.tokens,
       durationMs: Date.now() - start,
       mock: result.mock,
+      aiResult: extractAiResultLog(result.interpretation),
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : '解读失败'

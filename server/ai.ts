@@ -5,7 +5,7 @@ import {
   isProviderConfigured,
   readStreamContent,
 } from './providers.js'
-import { logger } from './logger.js'
+import { logger, extractAiResultLog } from './logger.js'
 export interface InterpretRequestBody {
   question: string
   spreadType: string
@@ -132,6 +132,7 @@ export async function interpretTarot(
     mode: 'sync',
     tokens,
     durationMs: Date.now() - aiStart,
+    aiResult: extractAiResultLog(interpretation),
   })
 
   return {
@@ -160,6 +161,13 @@ export async function streamInterpretTarot(
     }
     res.write(`data: ${JSON.stringify({ type: 'done', interpretation: mock })}\n\n`)
     res.end()
+    logger.info('ai', '模拟解读完成', {
+      requestId: ctx.requestId,
+      model: body.model,
+      mode: 'stream',
+      mock: true,
+      aiResult: extractAiResultLog(mock),
+    })
     return { interpretation: mock, model: body.model, tokens: 0, mock: true }
   }
 
@@ -185,6 +193,7 @@ export async function streamInterpretTarot(
     mode: 'stream',
     durationMs: Date.now() - aiStart,
     contentLength: fullContent.length,
+    aiResult: extractAiResultLog(interpretation),
   })
 
   return { interpretation, model: body.model, tokens: 0, mock: false }

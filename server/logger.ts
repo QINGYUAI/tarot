@@ -44,13 +44,31 @@ export function truncateText(text: string, max = 120): string {
 /** 从解读请求中提取可记录的业务字段（不含完整 prompt） */
 export function extractInterpretMeta(body: InterpretRequestBody) {
   return {
-    question: truncateText(body.question ?? ''),
+    question: truncateText(body.question ?? '', 120),
     spreadType: body.spreadType,
     model: body.model,
     cardCount: body.cards?.length ?? 0,
     cards: body.cards?.map(
       (c) => `${c.cardNameZh}${c.isReversed ? '(逆位)' : '(正位)'}`
     ),
+  }
+}
+
+/** 提取 AI 解读结果用于日志（完整结构化内容） */
+export function extractAiResultLog(interpretation: {
+  overview: string
+  positions: { position: number; text: string }[]
+  suggestions: string[]
+  cautions: string[]
+}) {
+  return {
+    overview: interpretation.overview,
+    positions: interpretation.positions.map((p) => ({
+      position: p.position,
+      text: truncateText(p.text, 500),
+    })),
+    suggestions: interpretation.suggestions,
+    cautions: interpretation.cautions,
   }
 }
 
