@@ -5,8 +5,7 @@ import {
   isProviderConfigured,
   readStreamContent,
 } from './providers.js'
-
-/** 解读请求体类型 */
+import { logger } from './logger.js'
 export interface InterpretRequestBody {
   question: string
   spreadType: string
@@ -27,6 +26,19 @@ export interface InterpretationResult {
   positions: { position: number; text: string }[]
   suggestions: string[]
   cautions: string[]
+}
+
+/** 解读上下文（用于日志关联） */
+export interface InterpretContext {
+  requestId?: string
+}
+
+/** 解读执行结果（含日志统计字段） */
+export interface InterpretRunResult {
+  interpretation: InterpretationResult
+  model: string
+  tokens: number
+  mock: boolean
 }
 
 /** 构建 AI 提示词 */
@@ -81,9 +93,21 @@ function parseInterpretation(text: string): InterpretationResult {
 }
 
 /** 非流式解读 */
-export async function interpretTarot(body: InterpretRequestBody) {
+export async function interpretTarot(
+  body: InterpretRequestBody,
+  ctx: InterpretContext = {}
+): Promise<InterpretRunResult> {
   if (!hasAnyProviderConfigured()) {
-    return { interpretation: mockInterpretation(body), model: body.model, tokens: 0 }
+    logger.warn('ai', '使用模拟解读（未配置 API Key）', {
+      requestId: ctx.requestId,
+      model: body.model,
+    })
+    return {
+      interpretation: mockInterpretation(body),
+      model: body.model,
+      tokens: 0,
+      mock: true,
+    }
   }
 
   if (!isProviderConfigured(body.model)) {
@@ -91,7 +115,8 @@ export async function interpretTarot(body: InterpretRequestBody) {
   }
 
   const prompt = buildPrompt(body)
-  const response = await callChatCompletion(body.model, prompt, false)
+  const aiStart = Date.now()
+  const response = await callChatCompletion(body.model, prompt, false, ctx.requestId)
   const data = (await response.json()) as {
     choices: { message: { content: string } }[]
     usage?: { total_tokens: number }
@@ -99,17 +124,35 @@ export async function interpretTarot(body: InterpretRequestBody) {
 
   const content = data.choices[0]?.message?.content ?? ''
   const interpretation = parseInterpretation(content)
+  const tokens = data.usage?.total_tokens ?? 0
+
+  logger.info('ai', 'AI 调用完成', {
+    requestId: ctx.requestId,
+    model: body.model,
+    mode: 'sync',
+    tokens,
+    durationMs: Date.now() - aiStart,
+  })
 
   return {
     interpretation,
     model: body.model,
-    tokens: data.usage?.total_tokens ?? 0,
+    tokens,
+    mock: false,
   }
 }
 
 /** 流式解读 */
-export async function streamInterpretTarot(body: InterpretRequestBody, res: Response) {
+export async function streamInterpretTarot(
+  body: InterpretRequestBody,
+  res: Response,
+  ctx: InterpretContext = {}
+): Promise<InterpretRunResult> {
   if (!hasAnyProviderConfigured()) {
+    logger.warn('ai', '使用模拟解读（未配置 API Key）', {
+      requestId: ctx.requestId,
+      model: body.model,
+    })
     const mock = mockInterpretation(body)
     for (const char of mock.overview) {
       res.write(`data: ${JSON.stringify({ type: 'chunk', text: char })}\n\n`)
@@ -117,7 +160,7 @@ export async function streamInterpretTarot(body: InterpretRequestBody, res: Resp
     }
     res.write(`data: ${JSON.stringify({ type: 'done', interpretation: mock })}\n\n`)
     res.end()
-    return
+    return { interpretation: mock, model: body.model, tokens: 0, mock: true }
   }
 
   if (!isProviderConfigured(body.model)) {
@@ -125,7 +168,8 @@ export async function streamInterpretTarot(body: InterpretRequestBody, res: Resp
   }
 
   const prompt = buildPrompt(body)
-  const response = await callChatCompletion(body.model, prompt, true)
+  const aiStart = Date.now()
+  const response = await callChatCompletion(body.model, prompt, true, ctx.requestId)
 
   const fullContent = await readStreamContent(response, (chunk) => {
     res.write(`data: ${JSON.stringify({ type: 'chunk', text: chunk })}\n\n`)
@@ -134,6 +178,16 @@ export async function streamInterpretTarot(body: InterpretRequestBody, res: Resp
   const interpretation = parseInterpretation(fullContent)
   res.write(`data: ${JSON.stringify({ type: 'done', interpretation })}\n\n`)
   res.end()
+
+  logger.info('ai', 'AI 流式调用完成', {
+    requestId: ctx.requestId,
+    model: body.model,
+    mode: 'stream',
+    durationMs: Date.now() - aiStart,
+    contentLength: fullContent.length,
+  })
+
+  return { interpretation, model: body.model, tokens: 0, mock: false }
 }
 
 /** 无 API Key 时的模拟解读 */

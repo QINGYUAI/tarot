@@ -1,4 +1,6 @@
 /** 各 AI 模型提供商配置 */
+import { logger } from './logger.js'
+
 export interface ProviderConfig {
   id: string
   name: string
@@ -99,7 +101,8 @@ function buildHeaders(provider: ProviderConfig, apiKey: string): Record<string, 
 export async function callChatCompletion(
   modelId: string,
   prompt: string,
-  stream = false
+  stream = false,
+  requestId?: string
 ): Promise<globalThis.Response> {
   const provider = getProvider(modelId)
   const apiKey = getApiKey(provider)
@@ -122,7 +125,15 @@ export async function callChatCompletion(
 
   if (!response.ok) {
     const err = await response.text()
-    throw new Error(`${provider.name} API 错误: ${response.status} ${err}`)
+    const message = `${provider.name} API 错误: ${response.status} ${err}`
+    logger.error('ai', 'AI 提供商请求失败', {
+      requestId,
+      provider: provider.id,
+      status: response.status,
+      stream,
+      error: err.slice(0, 300),
+    })
+    throw new Error(message)
   }
 
   return response
