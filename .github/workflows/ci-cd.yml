@@ -1,4 +1,5 @@
-# CI/CD：PR 构建校验，main 分支 push 后 SSH 自动部署到自有服务器
+# CI/CD：PR 构建校验，main 分支 push 后 SCP 推送代码并 SSH 部署
+# 服务器无需访问 GitHub（解决国内服务器 git fetch 失败问题）
 name: CI/CD
 
 on:
@@ -44,7 +45,22 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - name: SSH 部署
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 上传代码到服务器
+        uses: appleboy/scp-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          # 排除依赖与构建产物，.env 不在仓库中不会覆盖服务器配置
+          source: ".,!node_modules,!tarot,!.git"
+          target: ${{ secrets.PROJECT_PATH || '/var/www/tarot' }}
+          overwrite: true
+
+      - name: SSH 执行部署
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -54,24 +70,10 @@ jobs:
           command_timeout: 15m
           script_stop: true
           script: |
-            # PROJECT_PATH：Git 源码目录；DEPLOY_PATH：前端静态文件部署目录（Nginx root）
             PROJECT_PATH="${{ secrets.PROJECT_PATH || '/var/www/tarot' }}"
             export DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"
             export PROJECT_PATH
-            REPO_URL="https://github.com/QINGYUAI/tarot.git"
+            export SKIP_GIT_SYNC=1
 
-            mkdir -p "$PROJECT_PATH"
             cd "$PROJECT_PATH"
-
-            # 目录已存在但非 git 仓库时：初始化而非 clone（避免目录非空报错）
-            if [ ! -d .git ]; then
-              echo ">>> 初始化 git 仓库..."
-              git init
-              git remote add origin "$REPO_URL" 2>/dev/null || git remote set-url origin "$REPO_URL"
-            fi
-
-            echo ">>> 同步最新代码..."
-            git fetch origin main
-            git reset --hard origin/main
-
             bash scripts/deploy.sh

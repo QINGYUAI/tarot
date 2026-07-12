@@ -22,9 +22,13 @@ if [[ ! -f .env ]]; then
   exit 1
 fi
 
-echo ">>> [1/5] 拉取最新代码..."
-git fetch origin main
-git reset --hard origin/main
+if [[ "${SKIP_GIT_SYNC:-}" == "1" ]]; then
+  echo ">>> [1/5] 跳过 git 同步（代码已由 CI 推送）"
+else
+  echo ">>> [1/5] 拉取最新代码..."
+  git fetch origin main
+  git reset --hard origin/main
+fi
 
 echo ">>> [2/5] 安装依赖..."
 npm ci
