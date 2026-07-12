@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import './load-env.js'
 import type { InterpretRequestBody } from './ai.js'
 
 export type LogLevel = 'info' | 'warn' | 'error'
@@ -13,19 +14,24 @@ export interface LogEntry {
   [key: string]: unknown
 }
 
-const LOG_DIR = process.env.LOG_DIR || path.join(process.cwd(), 'logs')
+/** 解析日志目录（延迟读取 env，相对路径基于 process.cwd()） */
+function getLogDir(): string {
+  const raw = process.env.LOG_DIR?.trim()
+  if (!raw) return path.resolve(process.cwd(), 'logs')
+  return path.isAbsolute(raw) ? raw : path.resolve(process.cwd(), raw)
+}
 
 /** 确保日志目录存在 */
-function ensureLogDir(): void {
-  if (!fs.existsSync(LOG_DIR)) {
-    fs.mkdirSync(LOG_DIR, { recursive: true })
+function ensureLogDir(logDir: string): void {
+  if (!fs.existsSync(logDir)) {
+    fs.mkdirSync(logDir, { recursive: true })
   }
 }
 
 /** 按日期分文件：logs/app-2026-07-12.log */
-function getLogFilePath(): string {
+function getLogFilePath(logDir: string): string {
   const date = new Date().toISOString().slice(0, 10)
-  return path.join(LOG_DIR, `app-${date}.log`)
+  return path.join(logDir, `app-${date}.log`)
 }
 
 /** 截断过长文本，避免日志膨胀 */
@@ -50,11 +56,14 @@ export function extractInterpretMeta(body: InterpretRequestBody) {
 
 /** 写入日志文件并输出到控制台（PM2 可捕获） */
 function writeLog(entry: LogEntry): void {
+  const logDir = getLogDir()
+
   try {
-    ensureLogDir()
-    fs.appendFileSync(getLogFilePath(), `${JSON.stringify(entry)}\n`, 'utf8')
+    ensureLogDir(logDir)
+    fs.appendFileSync(getLogFilePath(logDir), `${JSON.stringify(entry)}\n`, 'utf8')
   } catch (err) {
-    console.error('[logger] 写入日志文件失败:', err)
+    const message = err instanceof Error ? err.message : String(err)
+    console.error(`[logger] 写入日志文件失败 (${logDir}):`, message)
   }
 
   const { time, level, category, message, ...meta } = entry
@@ -80,4 +89,6 @@ export const logger = {
     log('warn', category, message, meta),
   error: (category: string, message: string, meta?: Record<string, unknown>) =>
     log('error', category, message, meta),
+  /** 返回当前解析后的日志目录绝对路径（用于启动诊断） */
+  getLogDir,
 }

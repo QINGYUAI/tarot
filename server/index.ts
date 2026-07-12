@@ -1,13 +1,11 @@
+import './load-env.js'
 import express from 'express'
 import cors from 'cors'
-import dotenv from 'dotenv'
 import { randomUUID } from 'node:crypto'
 import type { Request } from 'express'
 import { interpretTarot, streamInterpretTarot, type InterpretRequestBody } from './ai.js'
 import { getConfiguredProviders, PROVIDERS } from './providers.js'
 import { extractInterpretMeta, logger } from './logger.js'
-
-dotenv.config()
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -146,9 +144,11 @@ app.post('/api/tarot/interpret/stream', async (req, res) => {
 })
 
 app.listen(PORT, () => {
+  const logDir = logger.getLogDir()
   logger.info('system', 'Tarot API 服务已启动', {
     port: PORT,
-    logDir: process.env.LOG_DIR || 'logs',
+    cwd: process.cwd(),
+    logDir,
     nodeEnv: process.env.NODE_ENV ?? 'development',
   })
 })
